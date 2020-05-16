@@ -197,9 +197,10 @@ func (appState *appState) handleClose(line []byte) {
 }
 
 func (appState *appState) processPtyActivity(message interface{}) {
-	switch message.(type) {
+	switch closedMessage := message.(type) {
 	case protocol.ClosedMessage:
-		// TODO
+		delete(appState.ptyPairsMap, closedMessage.Id)
+	default:
 	}
 	sendToController(message)
 }
