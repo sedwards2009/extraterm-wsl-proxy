@@ -3,12 +3,13 @@ package realpty
 import (
 	"extraterm-go-proxy/internal/protocol"
 	"os"
-
+	"sync"
 	"github.com/creack/pty"
 )
 
 type RealPty struct {
 	pty *os.File
+	ptyLock sync.Mutex
 }
 
 const chunkSizeBytes = 10 * 1024
@@ -41,24 +42,44 @@ func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 				Id:      ptyID,
 			}
 
-			ptyActivity <- closedMessage
-			close(this.pty)
+			this.ptyLock.Lock()
+			this.pty.Close()
 			this.pty = nil
+			this.ptyLock.Unlock()
+
+			ptyActivity <- closedMessage
 			break
 		}
 	}
 }
 
 func (this *RealPty) Terminate() {
+	this.ptyLock.Lock()
+	defer this.ptyLock.Unlock()
+	if this.pty == nil {
+		return
+	}
+
 	this.pty.Close()
-	this.pty = nil
 }
 
 func (this *RealPty) Write(data string) {
+	this.ptyLock.Lock()
+	defer this.ptyLock.Unlock()
+	if this.pty == nil {
+		return
+	}
+
 	this.pty.Write([]byte(data))
 }
 
 func (this *RealPty) Resize(rows, columns int) {
+	this.ptyLock.Lock()
+	defer this.ptyLock.Unlock()
+	if this.pty == nil {
+		return
+	}
+
 	winsize := pty.Winsize{Rows: uint16(rows), Cols: uint16(columns), X: 8, Y: 8}
 	pty.Setsize(this.pty, &winsize)
 }
