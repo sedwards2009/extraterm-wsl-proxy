@@ -18,32 +18,30 @@ import (
 
 const logFineFlag = true
 
-//-------------------------------------------------------------------------
-
 type appState struct {
 	idCounter   int
 	ptyPairsMap map[int]internalpty.InternalPty
-	ptyActivity chan bool
+	ptyActivity chan interface{}
 }
 
-//-------------------------------------------------------------------------
 func main() {
 	var appState appState
 	appState.ptyPairsMap = map[int]internalpty.InternalPty{}
 
 	commandChan := make(chan []byte, 1)
-	appState.ptyActivity = make(chan bool, 1)
+	appState.ptyActivity = make(chan interface{}, 1)
 
 	go commandLoop(commandChan)
 
 	for {
 		select {
+
 		case commandLine := <-commandChan:
 			logFine("main thread. Read: %s", commandLine)
-
 			appState.processCommand(commandLine)
-		case <-appState.ptyActivity:
-			appState.checkPtyOutput()
+
+		case message := <-appState.ptyActivity:
+			appState.processPtyActivity(message)
 		}
 	}
 }
@@ -137,22 +135,24 @@ func (appState *appState) handleCreate(line []byte) {
 	cmd := exec.Command(msg.Argv[0])
 	cmd.Env = *env
 	cmd.Args = msg.Argv[1:]
-	// cmd.Dir = *cwd	// TODO
+	// cmd.Dir = *cwd	// TODO\
+
+	appState.idCounter++
+	ptyID := appState.idCounter
 
 	var newPty internalpty.InternalPty
 	var winsize = pty.Winsize{Rows: uint16(msg.Columns), Cols: uint16(msg.Rows), X: 8, Y: 8}
 	pty, err := pty.StartWithSize(cmd, &winsize)
 	if err != nil {
-		message := fmt.Sprintf("Error while starting process '%s'. %s", msg.Argv[0], err)
-		log.Print(message)
-		newPty = deadpty.NewDeadPty(message, appState.ptyActivity)
+		errorMessage := fmt.Sprintf("Error while starting process '%s'. %s", msg.Argv[0], err)
+		log.Print(errorMessage)
+		newPty = deadpty.NewDeadPty(ptyID, appState.ptyActivity, errorMessage)
 	} else {
-		newPty = realpty.NewRealPty(pty, appState.ptyActivity)
+		newPty = realpty.NewRealPty(ptyID, appState.ptyActivity, pty)
 	}
 
-	appState.idCounter++
-	appState.ptyPairsMap[appState.idCounter] = newPty
-	sendToController(protocol.CreatedMessage{Message: protocol.Message{"created"}, Id: appState.idCounter})
+	appState.ptyPairsMap[ptyID] = newPty
+	sendToController(protocol.CreatedMessage{Message: protocol.Message{MessageType: "created"}, Id: ptyID})
 }
 
 func (appState *appState) handleWrite(line []byte) {
@@ -196,18 +196,16 @@ func (appState *appState) handleClose(line []byte) {
 
 }
 
-func (appState *appState) checkPtyOutput() {
-	for id, internalPty := range appState.ptyPairsMap {
-		chunk := internalPty.GetChunk()
-		if chunk != nil {
-			msg := protocol.OutputMessage{protocol.Message{"output"}, id, string(chunk)}
-			sendToController(msg)
-		}
+func (appState *appState) processPtyActivity(message interface{}) {
+	switch message.(type) {
+	case protocol.ClosedMessage:
+		// TODO
 	}
+	sendToController(message)
 }
 
 func logFine(format string, args ...interface{}) {
 	if logFineFlag {
-		fmt.Fprintf(os.Stderr, format, args)
+		fmt.Fprintf(os.Stderr, format, args...)
 	}
 }

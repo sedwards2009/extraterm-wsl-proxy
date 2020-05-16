@@ -43,6 +43,11 @@ type CloseMessage struct {
 	Id int `json:"id"`
 }
 
+type ClosedMessage struct {
+	Message
+	Id int `json:"id"`
+}
+
 type OutputMessage struct {
 	Message
 	Id   int    `json:"id"`

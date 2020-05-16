@@ -1,55 +1,51 @@
 package realpty
 
 import (
+	"extraterm-go-proxy/internal/protocol"
 	"os"
 
 	"github.com/creack/pty"
 )
 
 type RealPty struct {
-	stdin       chan []byte // Subprocess stdin
-	stdoutChan  chan []byte
-	pty         *os.File
-	ptyActivity chan bool
+	pty *os.File
 }
 
 const chunkSizeBytes = 10 * 1024
 const chunkChannelSize = 10
 
-func NewRealPty(pty *os.File, ptyActivity chan bool) *RealPty {
+func NewRealPty(ptyID int, ptyActivity chan<- interface{}, pty *os.File) *RealPty {
 	this := new(RealPty)
 	this.pty = pty
-	this.ptyActivity = ptyActivity
 
-	stdoutChan := make(chan []byte, 1)
-	this.stdoutChan = stdoutChan
-
-	go this.readRoutine()
+	go this.readRoutine(ptyID, ptyActivity)
 
 	return this
 }
 
-func (this *RealPty) readRoutine() {
+func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 	for {
 		buffer := make([]byte, chunkSizeBytes)
 		bufferSlice := buffer[:]
 		n, err := this.pty.Read(bufferSlice)
-		if err != nil {
-			// logFine("pth.Read() errored %s", err)
+		if err == nil {
+			outputMessage := protocol.OutputMessage{
+				Message: protocol.Message{MessageType: "output"},
+				Id:      ptyID,
+				Data:    string(bufferSlice[:n]),
+			}
+			ptyActivity <- outputMessage
+		} else {
+			closedMessage := protocol.ClosedMessage{
+				Message: protocol.Message{MessageType: "closed"},
+				Id:      ptyID,
+			}
 
+			ptyActivity <- closedMessage
+			close(this.pty)
+			this.pty = nil
 			break
 		}
-		this.stdoutChan <- bufferSlice[:n]
-		this.ptyActivity <- true
-	}
-}
-
-func (this *RealPty) GetChunk() []byte {
-	select {
-	case chunk := <-this.stdoutChan:
-		return chunk
-	default:
-		return nil
 	}
 }
 

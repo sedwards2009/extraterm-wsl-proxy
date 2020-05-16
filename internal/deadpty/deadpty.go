@@ -1,27 +1,30 @@
 package deadpty
 
+import "extraterm-go-proxy/internal/protocol"
+
 type DeadPty struct {
-	sentMsg bool
-	message string
 }
 
-func NewDeadPty(message string, ptyActivity chan bool) *DeadPty {
+func NewDeadPty(ptyID int, ptyActivity chan<- interface{}, errorMessage string) *DeadPty {
 	this := new(DeadPty)
-	this.message = message
 
 	go func() {
-		ptyActivity <- true
+		outputMessage := protocol.OutputMessage{
+			Message: protocol.Message{MessageType: "output"},
+			Id:      ptyID,
+			Data:    errorMessage,
+		}
+		ptyActivity <- outputMessage
+
+		closedMessage := protocol.ClosedMessage{
+			Message: protocol.Message{MessageType: "closed"},
+			Id:      ptyID,
+		}
+
+		ptyActivity <- closedMessage
 	}()
 
 	return this
-}
-
-func (this *DeadPty) GetChunk() []byte {
-	if !this.sentMsg {
-		this.sentMsg = true
-		return []byte(this.message)
-	}
-	return nil
 }
 
 func (this *DeadPty) Terminate() {
