@@ -150,7 +150,7 @@ func (appState *appState) handleCreate(line []byte) {
 		log.Print(errorMessage)
 		newPty = deadpty.NewDeadPty(ptyID, appState.ptyActivity, errorMessage)
 	} else {
-		newPty = realpty.NewRealPty(ptyID, appState.ptyActivity, pty)
+		newPty = realpty.NewRealPty(cmd, ptyID, appState.ptyActivity, pty)
 	}
 
 	appState.ptyPairsMap[ptyID] = newPty

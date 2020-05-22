@@ -2,6 +2,7 @@ package realpty
 
 import (
 	"extraterm-go-proxy/internal/protocol"
+	"os/exec"
 	"os"
 	"sync"
 	"github.com/creack/pty"
@@ -10,14 +11,17 @@ import (
 type RealPty struct {
 	pty *os.File
 	ptyLock sync.Mutex
+
+	cmd *exec.Cmd
 }
 
 const chunkSizeBytes = 10 * 1024
 const chunkChannelSize = 10
 
-func NewRealPty(ptyID int, ptyActivity chan<- interface{}, pty *os.File) *RealPty {
+func NewRealPty(cmd *exec.Cmd, ptyID int, ptyActivity chan<- interface{}, pty *os.File) *RealPty {
 	this := new(RealPty)
 	this.pty = pty
+	this.cmd = cmd
 
 	go this.readRoutine(ptyID, ptyActivity)
 
@@ -54,13 +58,8 @@ func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 }
 
 func (this *RealPty) Terminate() {
-	this.ptyLock.Lock()
-	defer this.ptyLock.Unlock()
-	if this.pty == nil {
-		return
-	}
-
-	this.pty.Close()
+	this.cmd.Process.Kill()
+	this.cmd.Wait()
 }
 
 func (this *RealPty) Write(data string) {
