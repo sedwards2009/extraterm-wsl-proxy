@@ -117,25 +117,27 @@ func (appState *appState) handleCreate(line []byte) {
 		}
 	}
 	env := envmaputils.KeyValueMapToArray(envMap)
-
 	// Set up the default working directory
-	var cwd *string = msg.Cwd
-	if cwd == nil || *cwd == "" {
-		cwd = nil
+	var cwd string
+
+	if msg.Cwd == nil || *msg.Cwd == "" {
+		cwd, _ = os.Getwd()
 	} else {
-		if _, err := os.Stat(*cwd); err != nil {
+		if _, err := os.Stat(*msg.Cwd); err != nil {
 			if os.IsNotExist(err) {
-				cwd = nil
+				cwd, _ = os.Getwd()
 			} else {
-				log.Fatal(err)
+				log.Fatal("Received unexpected error while checking cwd. ", err)
 			}
+		} else {
+			cwd = *msg.Cwd
 		}
 	}
 
 	cmd := exec.Command(msg.Argv[0])
 	cmd.Env = *env
 	cmd.Args = msg.Argv[1:]
-	// cmd.Dir = *cwd	// TODO\
+	cmd.Dir = cwd
 
 	appState.idCounter++
 	ptyID := appState.idCounter
