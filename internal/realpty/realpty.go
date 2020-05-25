@@ -2,14 +2,16 @@ package realpty
 
 import (
 	"extraterm-go-proxy/internal/protocol"
-	"os/exec"
+	"extraterm-go-proxy/internal/utf8sanitize"
 	"os"
+	"os/exec"
 	"sync"
+
 	"github.com/creack/pty"
 )
 
 type RealPty struct {
-	pty *os.File
+	pty     *os.File
 	ptyLock sync.Mutex
 
 	cmd *exec.Cmd
@@ -29,17 +31,21 @@ func NewRealPty(cmd *exec.Cmd, ptyID int, ptyActivity chan<- interface{}, pty *o
 }
 
 func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
+	sanitizer := utf8sanitize.NewUtf8Sanitizer()
 	for {
 		buffer := make([]byte, chunkSizeBytes)
 		bufferSlice := buffer[:]
 		n, err := this.pty.Read(bufferSlice)
 		if err == nil {
-			outputMessage := protocol.OutputMessage{
-				Message: protocol.Message{MessageType: "output"},
-				Id:      ptyID,
-				Data:    string(bufferSlice[:n]),
+			cleanData := sanitizer.Sanitize(bufferSlice[:n])
+			if len(cleanData) != 0 {
+				outputMessage := protocol.OutputMessage{
+					Message: protocol.Message{MessageType: "output"},
+					Id:      ptyID,
+					Data:    string(bufferSlice[:n]),
+				}
+				ptyActivity <- outputMessage
 			}
-			ptyActivity <- outputMessage
 		} else {
 			closedMessage := protocol.ClosedMessage{
 				Message: protocol.Message{MessageType: "closed"},
