@@ -1,8 +1,8 @@
 package realpty
 
 import (
-	"extraterm-go-proxy/internal/protocol"
-	"extraterm-go-proxy/internal/utf8sanitize"
+	"extraterm-wsl-proxy/internal/protocol"
+	"extraterm-wsl-proxy/internal/utf8sanitize"
 	"os"
 	"os/exec"
 	"sync"

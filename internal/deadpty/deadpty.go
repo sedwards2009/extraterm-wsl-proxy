@@ -1,6 +1,6 @@
 package deadpty
 
-import "extraterm-go-proxy/internal/protocol"
+import "extraterm-wsl-proxy/internal/protocol"
 
 type DeadPty struct {
 }

@@ -1,4 +1,4 @@
-module extraterm-go-proxy
+module extraterm-wsl-proxy
 
 go 1.14
 
