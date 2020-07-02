@@ -37,7 +37,6 @@ func main() {
 		select {
 
 		case commandLine := <-commandChan:
-			logFine("main thread. Read: %s", commandLine)
 			appState.processCommand(commandLine)
 
 		case message := <-appState.ptyActivity:
@@ -91,7 +90,6 @@ func (appState *appState) processCommand(commandLine []byte) {
 
 func sendToController(msg interface{}) {
 	jsonString, _ := json.Marshal(msg)
-	logFine("sendToController(%s)", jsonString)
 	os.Stdout.Write(jsonString)
 	os.Stdout.Write([]byte{'\n'})
 }
@@ -183,8 +181,7 @@ func (appState *appState) handlePermitDataSize(line []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// TODO
-	// (*appState).ptyPairsMap[msg.id].internalPty.permitDataSize(msg.size)
+	(*appState).ptyPairsMap[msg.Id].PermitDataSize(msg.Size)
 }
 
 func (appState *appState) handleClose(line []byte) {

@@ -15,6 +15,9 @@ type RealPty struct {
 	ptyLock sync.Mutex
 
 	cmd *exec.Cmd
+
+	permittedReadCond *sync.Cond
+	permittedRead     int
 }
 
 const chunkSizeBytes = 10 * 1024
@@ -25,6 +28,10 @@ func NewRealPty(cmd *exec.Cmd, ptyID int, ptyActivity chan<- interface{}, pty *o
 	this.pty = pty
 	this.cmd = cmd
 
+	m := sync.Mutex{}
+	this.permittedReadCond = sync.NewCond(&m)
+	this.permittedRead = 0
+
 	go this.readRoutine(ptyID, ptyActivity)
 
 	return this
@@ -33,7 +40,9 @@ func NewRealPty(cmd *exec.Cmd, ptyID int, ptyActivity chan<- interface{}, pty *o
 func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 	sanitizer := utf8sanitize.NewUtf8Sanitizer()
 	for {
-		buffer := make([]byte, chunkSizeBytes)
+		readSize := this.getPermittedSize()
+
+		buffer := make([]byte, min(readSize, chunkSizeBytes))
 		bufferSlice := buffer[:]
 		n, err := this.pty.Read(bufferSlice)
 		if err == nil {
@@ -44,6 +53,8 @@ func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 					Id:      ptyID,
 					Data:    string(bufferSlice[:n]),
 				}
+
+				this.decreasePermittedSize(n)
 				ptyActivity <- outputMessage
 			}
 		} else {
@@ -61,6 +72,31 @@ func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 			break
 		}
 	}
+}
+
+func (this *RealPty) getPermittedSize() int {
+	this.permittedReadCond.L.Lock()
+	if this.permittedRead <= 0 {
+		this.permittedReadCond.Wait()
+	}
+	readSize := this.permittedRead
+	this.permittedReadCond.L.Unlock()
+	return readSize
+}
+
+func (this *RealPty) decreasePermittedSize(delta int) {
+	this.permittedReadCond.L.Lock()
+	this.permittedRead -= delta
+	this.permittedReadCond.L.Unlock()
+}
+
+func (this *RealPty) PermitDataSize(size int) {
+	this.permittedReadCond.L.Lock()
+	this.permittedRead = size
+	if this.permittedRead > 0 {
+		this.permittedReadCond.Signal()
+	}
+	this.permittedReadCond.L.Unlock()
 }
 
 func (this *RealPty) Terminate() {
@@ -87,4 +123,11 @@ func (this *RealPty) Resize(rows, columns int) {
 
 	winsize := pty.Winsize{Rows: uint16(rows), Cols: uint16(columns), X: 8, Y: 8}
 	pty.Setsize(this.pty, &winsize)
+}
+
+func min(a, b int) int {
+	if a <= b {
+		return a
+	}
+	return b
 }

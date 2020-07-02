@@ -27,6 +27,9 @@ func NewDeadPty(ptyID int, ptyActivity chan<- interface{}, errorMessage string) 
 	return this
 }
 
+func (this *DeadPty) PermitDataSize(size int) {
+}
+
 func (this *DeadPty) Terminate() {
 }
 
