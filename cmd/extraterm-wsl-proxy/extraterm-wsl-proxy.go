@@ -161,8 +161,10 @@ func (appState *appState) handleWrite(line []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// TODO handle unknown ID
-	(*appState).ptyPairsMap[msg.Id].Write(msg.Data)
+
+	if pty, ok := (*appState).ptyPairsMap[msg.Id]; ok {
+		pty.Write(msg.Data)
+	}
 }
 
 func (appState *appState) handleResize(line []byte) {
@@ -172,7 +174,9 @@ func (appState *appState) handleResize(line []byte) {
 		log.Fatal(err)
 	}
 
-	(*appState).ptyPairsMap[msg.Id].Resize(msg.Rows, msg.Columns)
+	if pty, ok := (*appState).ptyPairsMap[msg.Id]; ok {
+		pty.Resize(msg.Rows, msg.Columns)
+	}
 }
 
 func (appState *appState) handlePermitDataSize(line []byte) {
@@ -181,7 +185,10 @@ func (appState *appState) handlePermitDataSize(line []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	(*appState).ptyPairsMap[msg.Id].PermitDataSize(msg.Size)
+
+	if pty, ok := (*appState).ptyPairsMap[msg.Id]; ok {
+		pty.PermitDataSize(msg.Size)
+	}
 }
 
 func (appState *appState) handleClose(line []byte) {
@@ -191,8 +198,9 @@ func (appState *appState) handleClose(line []byte) {
 		log.Fatal(err)
 	}
 
-	(*appState).ptyPairsMap[msg.Id].Terminate()
-
+	if pty, ok := (*appState).ptyPairsMap[msg.Id]; ok {
+		pty.Terminate()
+	}
 }
 
 func (appState *appState) processPtyActivity(message interface{}) {
