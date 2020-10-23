@@ -78,6 +78,9 @@ func (appState *appState) processCommand(commandLine []byte) {
 		case "close":
 			appState.handleClose(commandLine)
 
+		case "get-working-directory":
+			appState.handleGetWorkingDirectory(commandLine)
+
 		case "terminate":
 			os.Exit(0)
 
@@ -116,19 +119,26 @@ func (appState *appState) handleCreate(line []byte) {
 	}
 	env := envmaputils.KeyValueMapToArray(envMap)
 	// Set up the default working directory
-	var cwd string
+	var cwd = ""
+	if msg.SuggestedCwd != nil && *msg.SuggestedCwd != "" {
+		if _, err := os.Stat(*msg.SuggestedCwd); err == nil {
+			cwd = *msg.SuggestedCwd
+		}
+	}
 
-	if msg.Cwd == nil || *msg.Cwd == "" {
+	if cwd == "" && msg.Cwd != nil && *msg.Cwd != "" {
+		cwd = *msg.Cwd
+	}
+
+	if cwd == "" {
 		cwd, _ = os.Getwd()
-	} else {
-		if _, err := os.Stat(*msg.Cwd); err != nil {
-			if os.IsNotExist(err) {
-				cwd, _ = os.Getwd()
-			} else {
-				log.Fatal("Received unexpected error while checking cwd. ", err)
-			}
+	}
+
+	if _, err := os.Stat(cwd); err != nil {
+		if os.IsNotExist(err) {
+			cwd, _ = os.Getwd()
 		} else {
-			cwd = *msg.Cwd
+			log.Fatal("Received unexpected error while checking cwd. ", err)
 		}
 	}
 
@@ -201,6 +211,27 @@ func (appState *appState) handleClose(line []byte) {
 	if pty, ok := (*appState).ptyPairsMap[msg.Id]; ok {
 		pty.Terminate()
 	}
+}
+
+func (appState *appState) handleGetWorkingDirectory(line []byte) {
+	var msg protocol.GetWorkingDirectoryMessage
+	err := json.Unmarshal(line, &msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var cwd string = ""
+	if pty, ok := (*appState).ptyPairsMap[msg.Id]; ok {
+		cwd = pty.GetWorkingDirectory()
+	}
+
+	reply := protocol.GetWorkingDirectoryMessage{
+		Message: protocol.Message{MessageType: "working-directory"},
+		Id:      msg.Id,
+		Cwd:     cwd,
+	}
+
+	sendToController(reply)
 }
 
 func (appState *appState) processPtyActivity(message interface{}) {

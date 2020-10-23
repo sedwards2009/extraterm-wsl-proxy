@@ -1,11 +1,15 @@
 package realpty
 
 import (
+	"C"
 	"extraterm-wsl-proxy/internal/protocol"
 	"extraterm-wsl-proxy/internal/utf8sanitize"
+	"fmt"
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
+	"unsafe"
 
 	"github.com/creack/pty"
 )
@@ -123,6 +127,32 @@ func (this *RealPty) Resize(rows, columns int) {
 
 	winsize := pty.Winsize{Rows: uint16(rows), Cols: uint16(columns), X: 8, Y: 8}
 	pty.Setsize(this.pty, &winsize)
+}
+
+func (this *RealPty) GetWorkingDirectory() string {
+	this.ptyLock.Lock()
+	defer this.ptyLock.Unlock()
+	if this.pty == nil {
+		return ""
+	}
+
+	var pid C.uint
+	if err := ioctl(this.pty.Fd(), syscall.TIOCGPGRP, uintptr(unsafe.Pointer(&pid))); err != nil {
+		return ""
+	}
+
+	if dir, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", pid)); err == nil {
+		return dir
+	}
+	return ""
+}
+
+func ioctl(fd, cmd, ptr uintptr) error {
+	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, fd, cmd, ptr)
+	if e != 0 {
+		return e
+	}
+	return nil
 }
 
 func min(a, b int) int {

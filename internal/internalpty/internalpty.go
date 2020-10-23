@@ -5,4 +5,5 @@ type InternalPty interface {
 	Write(data string)
 	Resize(rows, cols int)
 	PermitDataSize(size int)
+	GetWorkingDirectory() string
 }

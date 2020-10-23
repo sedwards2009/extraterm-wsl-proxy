@@ -6,12 +6,13 @@ type Message struct {
 
 type CreateMessage struct {
 	Message
-	Argv     []string           `json:"argv"`
-	Cwd      *string            `json:"cwd"`
-	Rows     float64            `json:"rows"`
-	Columns  float64            `json:"columns"`
-	Env      *map[string]string `json:"env"`
-	ExtraEnv *map[string]string `json:"extraEnv"`
+	Argv         []string           `json:"argv"`
+	Cwd          *string            `json:"cwd"`
+	Rows         float64            `json:"rows"`
+	Columns      float64            `json:"columns"`
+	Env          *map[string]string `json:"env"`
+	ExtraEnv     *map[string]string `json:"extraEnv"`
+	SuggestedCwd *string            `json:"suggestedCwd"`
 }
 
 type CreatedMessage struct {
@@ -52,4 +53,15 @@ type OutputMessage struct {
 	Message
 	Id   int    `json:"id"`
 	Data string `json:"data"`
+}
+
+type GetWorkingDirectoryRequestMessage struct {
+	Message
+	Id int `json:"id"`
+}
+
+type GetWorkingDirectoryMessage struct {
+	Message
+	Id  int    `json:"id"`
+	Cwd string `json:"cwd"`
 }

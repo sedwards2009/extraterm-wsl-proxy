@@ -38,3 +38,7 @@ func (this *DeadPty) Write(data string) {
 
 func (this *DeadPty) Resize(rows, columns int) {
 }
+
+func (this *DeadPty) GetWorkingDirectory() string {
+	return ""
+}
