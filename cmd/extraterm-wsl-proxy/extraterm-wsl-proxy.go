@@ -150,11 +150,14 @@ func (appState *appState) handleCreate(line []byte) {
 	appState.idCounter++
 	ptyID := appState.idCounter
 
+	processParameters := formatNewProcessParameters(msg.Argv, cwd, *env)
+	log.Print(fmt.Sprintf("Starting WSL process: %s\n", processParameters))
+
 	var newPty internalpty.InternalPty
 	var winsize = pty.Winsize{Rows: uint16(msg.Columns), Cols: uint16(msg.Rows), X: 8, Y: 8}
 	pty, err := pty.StartWithSize(cmd, &winsize)
 	if err != nil {
-		errorMessage := fmt.Sprintf("Error while starting process '%s'. %s", msg.Argv[0], err)
+		errorMessage := fmt.Sprintf("Error while starting process '%s'. %s\n%s", msg.Argv[0], err, processParameters)
 		log.Print(errorMessage)
 		newPty = deadpty.NewDeadPty(ptyID, appState.ptyActivity, errorMessage)
 	} else {
@@ -163,6 +166,21 @@ func (appState *appState) handleCreate(line []byte) {
 
 	appState.ptyPairsMap[ptyID] = newPty
 	sendToController(protocol.CreatedMessage{Message: protocol.Message{MessageType: "created"}, Id: ptyID})
+}
+
+func formatNewProcessParameters(argv []string, cwd string, env []string) string {
+	return fmt.Sprintf("argv: %s, cwd: '%s', env: %s", formatStringArray(argv), cwd, formatStringArray(env))
+}
+
+func formatStringArray(strArray []string) string {
+	result := "["
+	comma := ""
+	for _, item := range strArray {
+		result = fmt.Sprintf("%s%s'%s'", result, comma, item)
+		comma = ", "
+	}
+	result = result + "]"
+	return result
 }
 
 func (appState *appState) handleWrite(line []byte) {
