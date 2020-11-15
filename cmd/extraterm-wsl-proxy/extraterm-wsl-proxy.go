@@ -82,6 +82,7 @@ func (appState *appState) processCommand(commandLine []byte) {
 			appState.handleGetWorkingDirectory(commandLine)
 
 		case "terminate":
+
 			os.Exit(0)
 
 		default:

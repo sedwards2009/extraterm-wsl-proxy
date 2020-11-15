@@ -62,17 +62,21 @@ func (this *RealPty) readRoutine(ptyID int, ptyActivity chan<- interface{}) {
 				ptyActivity <- outputMessage
 			}
 		} else {
+			this.cmd.Wait()
+			exitCode := this.cmd.ProcessState.ExitCode()
+
 			closedMessage := protocol.ClosedMessage{
-				Message: protocol.Message{MessageType: "closed"},
-				Id:      ptyID,
+				Message:  protocol.Message{MessageType: "closed"},
+				Id:       ptyID,
+				ExitCode: exitCode,
 			}
+			ptyActivity <- closedMessage
 
 			this.ptyLock.Lock()
 			this.pty.Close()
 			this.pty = nil
 			this.ptyLock.Unlock()
 
-			ptyActivity <- closedMessage
 			break
 		}
 	}

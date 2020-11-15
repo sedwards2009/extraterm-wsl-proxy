@@ -17,8 +17,9 @@ func NewDeadPty(ptyID int, ptyActivity chan<- interface{}, errorMessage string) 
 		ptyActivity <- outputMessage
 
 		closedMessage := protocol.ClosedMessage{
-			Message: protocol.Message{MessageType: "closed"},
-			Id:      ptyID,
+			Message:  protocol.Message{MessageType: "closed"},
+			Id:       ptyID,
+			ExitCode: 0,
 		}
 
 		ptyActivity <- closedMessage

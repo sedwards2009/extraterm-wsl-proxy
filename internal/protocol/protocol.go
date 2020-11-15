@@ -46,7 +46,8 @@ type CloseMessage struct {
 
 type ClosedMessage struct {
 	Message
-	Id int `json:"id"`
+	Id       int `json:"id"`
+	ExitCode int `json:"exitcode"`
 }
 
 type OutputMessage struct {
