@@ -37,7 +37,7 @@ func (this *Utf8Sanitizer) Sanitize(newInput []byte) string {
 	for position < len(input) {
 		r, size := utf8.DecodeRune(input[position:])
 		if r == utf8.RuneError {
-			if position < len(input) - utf8MaxEncodingLength {
+			if position < len(input)-utf8MaxEncodingLength {
 				// Accept the corrupt data and try to go past it.
 				size = 1
 			} else {
