@@ -18,10 +18,10 @@ func TestKeyValueMapToArray(t *testing.T) {
 	result := KeyValueMapToArray(&testMap)
 	sort.Strings(*result)
 	if (*result)[0] != "foo=bar" {
-		t.Fail()
+		t.Logf("foo=bar test failed")
 	}
-	if (*result)[0] != "smeg=it" {
-		t.Fail()
+	if (*result)[1] != "smeg=it" {
+		t.Logf("smeg=it test failed")
 	}
 }
 
@@ -30,10 +30,10 @@ func TestKeyValueArrayToMap(t *testing.T) {
 		"foo=bar", "smeg=it=all"}
 	result := KeyValueArrayToMap(testEnv)
 	if (*result)["foo"] != "bar" {
-		t.Fail()
+		t.Logf("['foo'] != 'bar' failed")
 	}
 
 	if (*result)["smeg"] != "it=all" {
-		t.Fail()
+		t.Logf("['smeg'] != 'it=all' failed")
 	}
 }
